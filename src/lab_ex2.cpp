@@ -44,23 +44,23 @@ void prod()
 void cons()
 {   
     while (!shouldStop)
-    	{
-		std::unique_lock<std::mutex> lock(mutex_);
-		cv.wait(lock, []{
-			return !queue_.empty();
-		});
-		// On doit toujours vérifier si un objet std::queue n'est pas vide
-		// avant de retirer un élément.
-		    int v = queue_.front(); // Copie le premier élément de la queue.
-		    
-		    if(v == 0){
-		    	shouldStop = true;
-		    }
-		    
-		    queue_.pop();           // Retire le premier élément.
+    {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv.wait(lock, []{
+        return !queue_.empty();
+    });
+    // On doit toujours vérifier si un objet std::queue n'est pas vide
+    // avant de retirer un élément.
+        int v = queue_.front(); // Copie le premier élément de la queue.
+        
+        if(v == 0){
+            shouldStop = true;
+        }
+        
+        queue_.pop();           // Retire le premier élément.
 
-		    printf("Reçu: %d\n", v);
-    	}
+        printf("Reçu: %d\n", v);
+    }
 }
 
 int main(int argc, char** argv)

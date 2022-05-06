@@ -12,6 +12,8 @@
 #include <string>
 #include <cstring>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 
 namespace gif643 {
 
@@ -208,6 +210,8 @@ private:
     // The tasks to run queue (FIFO).
     /// TODO: Probablement besoin dun mutex sur la task_queue_
     std::queue<TaskDef> task_queue_;
+    std::mutex mutex_;
+    std::condition_variable condition_var;
 
     // The cache hash map (TODO). Note that we use the string definition as the // key.
     using PNGHashMap = std::unordered_map<std::string, PNGDataPtr>;
@@ -313,8 +317,10 @@ public:
         std::queue<TaskDef> queue;
         TaskDef def;
         if (parse(line_org, def)) {
+            std::lock_guard<std::mutex> lock(mutex_);
             std::cerr << "Queueing task '" << line_org << "'." << std::endl;
             task_queue_.push(def);
+            condition_var.notify_one();
         }
     }
 
@@ -322,6 +328,7 @@ public:
     bool queueEmpty()
     {
         ///TODO: verrous pour task_queue ici peut etre
+        std::lock_guard<std::mutex> lock(mutex_);
         return task_queue_.empty();
     }
 
@@ -331,12 +338,16 @@ private:
     { 
         ///TODO: Ajouter ici un condition variable probablement (wait)
         while (should_run_) {
-            if (!task_queue_.empty()) {
-                TaskDef task_def = task_queue_.front();
-                task_queue_.pop();
-                TaskRunner runner(task_def);
-                runner();
-            }
+            std::unique_lock<std::mutex> lock(mutex_);
+            condition_var.wait(lock, [&] {
+                return !task_queue_.empty();
+            });
+
+            TaskDef task_def = task_queue_.front();
+            task_queue_.pop();
+            lock.unlock();
+            TaskRunner runner(task_def);
+            runner();
         }
     }
 };
@@ -349,14 +360,14 @@ int main(int argc, char** argv)
 
     std::ifstream file_in;
 
-    if (argc >= 2 && (strcmp(argv[1], "-") != 0)) {
-        file_in.open(argv[1]);
+    if (argc >= 3 && (strcmp(argv[2], "-") != 0)) {
+        file_in.open(argv[2]);
         if (file_in.is_open()) {
             std::cin.rdbuf(file_in.rdbuf());
-            std::cerr << "Using " << argv[1] << "..." << std::endl;
+            std::cerr << "Using " << argv[2] << "..." << std::endl;
         } else {
             std::cerr   << "Error: Cannot open '"
-                        << argv[1] 
+                        << argv[2] 
                         << "', using stdin (press CTRL-D for EOF)." 
                         << std::endl;
         }
@@ -365,7 +376,7 @@ int main(int argc, char** argv)
     }
 
     /// TODO: change the number of threads from args.
-    Processor proc;
+    Processor proc(atoi(argv[1]));
     
     while (!std::cin.eof()) {
 
