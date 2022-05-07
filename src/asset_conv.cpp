@@ -20,7 +20,7 @@ namespace gif643 {
 const size_t    BPP         = 4;    // Bytes per pixel
 const float     ORG_WIDTH   = 48.0; // Original SVG image width in px.
 const int       NUM_THREADS = 1;    // Default value, changed by argv. 
-std::mutex task_runner_mutex;
+std::mutex png_writer_mutex;
 
 using PNGDataVec = std::vector<char>;
 using PNGDataPtr = std::shared_ptr<PNGDataVec>;
@@ -71,7 +71,7 @@ public:
                     const unsigned char* image_data,
                     size_t stride){
             stbi_write_func* fun = PNGWriter::rawCallback;
-            std::unique_lock<std::mutex> lock(task_runner_mutex);
+            std::lock_guard<std::mutex> lock(png_writer_mutex); //A confirmer, mais ca semble fonctionner
             int r = stbi_write_png_to_func(fun, 
                                            this,
                                            width,
@@ -79,7 +79,6 @@ public:
                                            BPP,
                                            &image_data[0],
                                            stride);
-            lock.unlock();
             if (r == 0) {
                 throw std::runtime_error("Error in write_png_to_func");
             }
