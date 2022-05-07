@@ -27,7 +27,6 @@ using PNGDataVec = std::vector<char>;
 using PNGDataPtr = std::shared_ptr<PNGDataVec>;
 // The cache hash map (TODO). Note that we use the string definition as the // key.
 using PNGHashMap = std::unordered_map<std::string, bool>;
-PNGHashMap png_cache_;
 /// \brief Wraps callbacks from stbi_image_write
 //
 // Provides a static method to give to stbi_write_png_to_func (rawCallback),
@@ -352,6 +351,8 @@ int main(int argc, char** argv)
 {
     using namespace gif643;
 
+    PNGHashMap png_cache;
+
     std::ifstream file_in;
     if (argc >= 3 && (strcmp(argv[2], "-") != 0)) {
         file_in.open(argv[2]);
@@ -376,13 +377,13 @@ int main(int argc, char** argv)
 
         std::getline(std::cin, line);
         if (!line.empty()) {
-            PNGHashMap::const_iterator iterator = png_cache_.find(line);
-            if (iterator != png_cache_.end()){
+            PNGHashMap::const_iterator iterator = png_cache.find(line);
+            if (iterator != png_cache.end()){
                 std::cerr<<"This request has already been handled: " << line <<std::endl;
                 continue;
             }
             proc.parseAndQueue(line);
-            png_cache_[line] = true;
+            png_cache[line] = true;
         }
     }
 
