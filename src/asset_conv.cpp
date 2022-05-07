@@ -20,11 +20,14 @@ namespace gif643 {
 const size_t    BPP         = 4;    // Bytes per pixel
 const float     ORG_WIDTH   = 48.0; // Original SVG image width in px.
 const int       NUM_THREADS = 1;    // Default value, changed by argv. 
+
 std::mutex png_writer_mutex;
 
 using PNGDataVec = std::vector<char>;
 using PNGDataPtr = std::shared_ptr<PNGDataVec>;
-
+// The cache hash map (TODO). Note that we use the string definition as the // key.
+using PNGHashMap = std::unordered_map<std::string, bool>;
+PNGHashMap png_cache_;
 /// \brief Wraps callbacks from stbi_image_write
 //
 // Provides a static method to give to stbi_write_png_to_func (rawCallback),
@@ -71,7 +74,7 @@ public:
                     const unsigned char* image_data,
                     size_t stride){
             stbi_write_func* fun = PNGWriter::rawCallback;
-            std::lock_guard<std::mutex> lock(png_writer_mutex); //A confirmer, mais ca semble fonctionner
+            std::lock_guard<std::mutex> lock(png_writer_mutex);
             int r = stbi_write_png_to_func(fun, 
                                            this,
                                            width,
@@ -208,14 +211,9 @@ class Processor
 {
 private:
     // The tasks to run queue (FIFO).
-    /// TODO: Probablement besoin dun mutex sur la task_queue_
     std::queue<TaskDef> task_queue_;
     std::mutex mutex_;
     std::condition_variable condition_var;
-
-    // The cache hash map (TODO). Note that we use the string definition as the // key.
-    using PNGHashMap = std::unordered_map<std::string, PNGDataPtr>;
-    PNGHashMap png_cache_;
 
     bool should_run_;           // Used to signal the end of the processor to
                                 // threads.
@@ -251,6 +249,7 @@ public:
     ~Processor()
     {
         should_run_ = false;
+        condition_var.notify_all();
         for (auto& qthread: queue_threads_) {
             qthread.join();
         }
@@ -312,13 +311,11 @@ public:
     /// nothing is queued.
     void parseAndQueue(const std::string& line_org)
     {
-        ///TODO:  verrous pour task_queue ici peut etre
-        ///TODO:  condition variable ici probablement a setter (notify)
         std::queue<TaskDef> queue;
         TaskDef def;
         if (parse(line_org, def)) {
-            std::lock_guard<std::mutex> lock(mutex_);
             std::cerr << "Queueing task '" << line_org << "'." << std::endl;
+            std::lock_guard<std::mutex> lock(mutex_);
             task_queue_.push(def);
             condition_var.notify_one();
         }
@@ -327,7 +324,6 @@ public:
     /// \brief Returns if the internal queue is empty (true) or not.
     bool queueEmpty()
     {
-        ///TODO: verrous pour task_queue ici peut etre
         std::lock_guard<std::mutex> lock(mutex_);
         return task_queue_.empty();
     }
@@ -336,18 +332,16 @@ private:
     /// \brief Queue processing thread function.
     void processQueue()
     { 
-        ///TODO: Ajouter ici un condition variable probablement (wait)
         while (should_run_) {
             std::unique_lock<std::mutex> lock(mutex_);
-            condition_var.wait(lock, [&] {
-                return !task_queue_.empty();
-            });
-
-            TaskDef task_def = task_queue_.front();
-            task_queue_.pop();
-            lock.unlock();
-            TaskRunner runner(task_def);
-            runner();
+            condition_var.wait(lock, [&] {return !task_queue_.empty() || !should_run_;});
+            if (!task_queue_.empty()){
+                TaskDef task_def = task_queue_.front();
+                task_queue_.pop();
+                lock.unlock();
+                TaskRunner runner(task_def);
+                runner();
+            }        
         }
     }
 };
@@ -359,7 +353,6 @@ int main(int argc, char** argv)
     using namespace gif643;
 
     std::ifstream file_in;
-
     if (argc >= 3 && (strcmp(argv[2], "-") != 0)) {
         file_in.open(argv[2]);
         if (file_in.is_open()) {
@@ -375,8 +368,7 @@ int main(int argc, char** argv)
         std::cerr << "Using stdin (press CTRL-D for EOF)." << std::endl;
     }
 
-    /// TODO: change the number of threads from args.
-    Processor proc(atoi(argv[1]));
+    Processor proc(std::atoi(argv[1]));
     
     while (!std::cin.eof()) {
 
@@ -384,7 +376,13 @@ int main(int argc, char** argv)
 
         std::getline(std::cin, line);
         if (!line.empty()) {
+            PNGHashMap::const_iterator iterator = png_cache_.find(line);
+            if (iterator != png_cache_.end()){
+                std::cerr<<"This request has already been handled: " << line <<std::endl;
+                continue;
+            }
             proc.parseAndQueue(line);
+            png_cache_[line] = true;
         }
     }
 
