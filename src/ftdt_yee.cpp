@@ -339,23 +339,23 @@ class WaveEquation{
             Delimiter not_first = Delimiter(1, size);
             Delimiter not_last = Delimiter(0, size-1);
 
-            auto add3d_res = sub_3d(slice(E, all, not_first, all, 2), slice(E, all, not_last, all, 2));
-            curl_E = add_to_4d(curl_E, add3d_res, all, not_last, all, 0);
+            auto sub3d_res = sub_3d(slice(E, all, not_first, all, 2), slice(E, all, not_last, all, 2));
+            curl_E = add_to_4d(curl_E, sub3d_res, all, not_last, all, 0);
 
-            add3d_res = sub_3d(slice(E, all, all, not_first, 1), slice(E, all, all, not_last, 1));
-            curl_E = sub_from_4d(curl_E, add3d_res, all, all, not_last, 0);
+            sub3d_res = sub_3d(slice(E, all, all, not_first, 1), slice(E, all, all, not_last, 1));
+            curl_E = sub_from_4d(curl_E, sub3d_res, all, all, not_last, 0);
 
-            add3d_res = sub_3d(slice(E, all, all, not_first, 0), slice(E, all, all, not_last, 0));
-            curl_E = add_to_4d(curl_E, add3d_res, all, all, not_last, 1);
+            sub3d_res = sub_3d(slice(E, all, all, not_first, 0), slice(E, all, all, not_last, 0));
+            curl_E = add_to_4d(curl_E, sub3d_res, all, all, not_last, 1);
 
-            add3d_res = sub_3d(slice(E, not_first, all, all, 2), slice(E, not_last, all, all, 2));
-            curl_E = sub_from_4d(curl_E, add3d_res, not_last, all, all, 1);
+            sub3d_res = sub_3d(slice(E, not_first, all, all, 2), slice(E, not_last, all, all, 2));
+            curl_E = sub_from_4d(curl_E, sub3d_res, not_last, all, all, 1);
 
-            add3d_res = sub_3d(slice(E, not_first, all, all, 1), slice(E, not_last, all, all, 1));
-            curl_E = add_to_4d(curl_E, add3d_res, not_last, all, all, 2);
+            sub3d_res = sub_3d(slice(E, not_first, all, all, 1), slice(E, not_last, all, all, 1));
+            curl_E = add_to_4d(curl_E, sub3d_res, not_last, all, all, 2);
 
-            add3d_res = sub_3d(slice(E, all, not_first, all, 0), slice(E, all, not_last, all, 0));
-            curl_E = sub_from_4d(curl_E, add3d_res, all, not_last, all, 2);
+            sub3d_res = sub_3d(slice(E, all, not_first, all, 0), slice(E, all, not_last, all, 0));
+            curl_E = sub_from_4d(curl_E, sub3d_res, all, not_last, all, 2);
 
             return curl_E;
         }
@@ -366,23 +366,23 @@ class WaveEquation{
             Delimiter not_first = Delimiter(1, size);
             Delimiter not_last = Delimiter(0, size-1);
 
-            auto add3d_res = sub_3d(slice(H, all, not_first, all, 2), slice(H, all, not_last, all, 2));
-            curl_H = add_to_4d(curl_H, add3d_res, all, not_first, all, 0);
+            auto sub3d_res = sub_3d(slice(H, all, not_first, all, 2), slice(H, all, not_last, all, 2));
+            curl_H = add_to_4d(curl_H, sub3d_res, all, not_first, all, 0);
 
-            add3d_res = sub_3d(slice(H, all, all, not_first, 1), slice(H, all, all, not_last, 1));
-            curl_H = sub_from_4d(curl_H, add3d_res, all, all, not_first, 0);
+            sub3d_res = sub_3d(slice(H, all, all, not_first, 1), slice(H, all, all, not_last, 1));
+            curl_H = sub_from_4d(curl_H, sub3d_res, all, all, not_first, 0);
 
-            add3d_res = sub_3d(slice(H, all, all, not_first, 0), slice(H, all, all, not_last, 0));
-            curl_H = add_to_4d(curl_H, add3d_res, all, all, not_first, 1);
+            sub3d_res = sub_3d(slice(H, all, all, not_first, 0), slice(H, all, all, not_last, 0));
+            curl_H = add_to_4d(curl_H, sub3d_res, all, all, not_first, 1);
 
-            add3d_res = sub_3d(slice(H, not_first, all, all, 2), slice(H, not_last, all, all, 2));
-            curl_H = sub_from_4d(curl_H, add3d_res, not_first, all, all, 1);
+            sub3d_res = sub_3d(slice(H, not_first, all, all, 2), slice(H, not_last, all, all, 2));
+            curl_H = sub_from_4d(curl_H, sub3d_res, not_first, all, all, 1);
 
-            add3d_res = sub_3d(slice(H, not_first, all, all, 1), slice(H, not_last, all, all, 1));
-            curl_H = add_to_4d(curl_H, add3d_res, not_first, all, all, 2);
+            sub3d_res = sub_3d(slice(H, not_first, all, all, 1), slice(H, not_last, all, all, 1));
+            curl_H = add_to_4d(curl_H, sub3d_res, not_first, all, all, 2);
 
-            add3d_res = sub_3d(slice(H, all, not_first, all, 0), slice(H, all, not_last, all, 0));
-            curl_H = sub_from_4d(curl_H, add3d_res, all, not_first, all, 2);
+            sub3d_res = sub_3d(slice(H, all, not_first, all, 0), slice(H, all, not_last, all, 0));
+            curl_H = sub_from_4d(curl_H, sub3d_res, all, not_first, all, 2);
 
             return curl_H;
         }
@@ -519,7 +519,7 @@ int main(int argc, char const *argv[])
      // depth = z 
 
 
-    int n = 10;
+    int n = 100;
     float courant_number = 0.1;
     int field_components = 3;
 
@@ -527,7 +527,7 @@ int main(int argc, char const *argv[])
     std::string folder_path = "./output_waveprop/cpp/";
 
     WaveEquation w = WaveEquation(courant_number, n, field_components);
-    for(int i=0; i<3; i++){
+    for(int i=0; i<1; i++){
         w(0, 0, 0);
     }
 
