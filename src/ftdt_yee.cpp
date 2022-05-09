@@ -19,57 +19,45 @@ void print_3d(Dim3 mat){
         for(auto col: row){
             for(auto depth: col){
                std::cout << "pos : (" << k << "," << j << "," << i << ") is : " << depth << std::endl;
-               k++;
+               i++;
                count++;
             }
-            k=0;
+            i=0;
             j++;
         }
+        i=0;
         j=0;
-        i++;
+        k++;
     }
     std::cout << "number of vals in matrix : " << count << std::endl;
 }
 
-void print_4d(Matrix4D mat){
+void print_4d(Matrix4D mat, int size, int num_field_components){
     std::cout << "Result matrix 4d" << std::endl;
 
-    int i=0;
-    int j=0;
-    int k=0;
-    int l=0;
-    int count=0;
-    for(auto field_component: mat ){
-        for(auto depth : field_component){
-            for(auto row: depth){
-                for(auto col: row){
-                std::cout << "pos : (" << i << "," << j << "," << k << "," << l << ") is : " << col << std::endl;
-                    l++;
+    int count = 0;
+    for(int field_comp=0; field_comp<num_field_components; field_comp++){
+        for(int z=0; z<size; z++){
+            for(int y=0; y<size; y++){
+                for(int x=0; x < size; x++){
+                    std::cout << "pos : (" << x << "," << y << "," << z << "," << field_comp << ") is : " << mat[x][y][z][field_comp] << std::endl;
                     count++;
                 }
-                l=0;
-                k++;
             }
-            l=0;
-            k=0;
-            j++;
         }
-        l=0;
-        k=0;
-        j=0;
-        i++;
+        std::cout << std::endl;
     }
     std::cout << "number of vals in matrix : " << count << std::endl;
 }
 
 Matrix4D gen_mat4d(int size, int num_field_components){
-    Matrix4D my_matrix(3, Dim3(size, Dim2(size, Dim1(size))));
-    int count = 0;
+    Matrix4D my_matrix(size, Dim3(size, Dim2(size, Dim1(num_field_components))));
+    int count = 1;
     for(int field_comp=0; field_comp<num_field_components; field_comp++){
-        for(int j=0; j<size; j++){
-            for(int k=0; k<size; k++){
-                for(int l=0; l < size; l++){
-                    my_matrix[field_comp][j][k][l] = count++;
+        for(int z=0; z<size; z++){
+            for(int y=0; y<size; y++){
+                for(int x=0; x < size; x++){
+                    my_matrix[x][y][z][field_comp] = count++;
                 }
             }
         }
@@ -128,16 +116,18 @@ class WaveEquation{
     private:
         float courant_number;
         int size;
+        int field_components;
         int index;
         Matrix4D E;
         Matrix4D H;
 
     public:
-        WaveEquation(float courant_number, int size){
-            Matrix4D my_matrix(3, Dim3(size, Dim2(size, Dim1(size))));
+        WaveEquation(float courant_number, int size, int field_components){
+            Matrix4D my_matrix(size, Dim3(size, Dim2(size, Dim1(field_components))));
             this->E = my_matrix;
             this->H = my_matrix;
             this->size = size;
+            this->field_components = field_components;
             this->courant_number = courant_number;
             this->index = 0;
 
@@ -186,9 +176,10 @@ class WaveEquation{
             int i = 0;
             int j = 0;
             int k = 0;
-            for(int z = z_del.getBegin(); z < z_del.getEnd(); z++){
+
+            for(int x = x_del.getBegin(); x < x_del.getEnd(); x++){
                 for(int y = y_del.getBegin(); y < y_del.getEnd(); y++){
-                    for(int x = x_del.getBegin(); x < x_del.getEnd(); x++){
+                    for(int z = z_del.getBegin(); z < z_del.getEnd(); z++){
 
                         // std::cout << "mat_4d current value at pos : (" << field_component << "," << z << "," << y << "," << x << ") is : "
                         // << mat_4d[field_component][z][y][x]
@@ -198,7 +189,7 @@ class WaveEquation{
                         // << mat_3d[k][j][i]
                         // << std::endl;
                         
-                        mat_4d[field_component][z][y][x] += mat_3d[k][j][i];
+                        mat_4d[x][y][z][field_component] += mat_3d[k][j][i];
                         i++;
                     }
                     i = 0;
@@ -210,7 +201,7 @@ class WaveEquation{
             }
 
             // std::cout << "result of add to 4d" << std::endl;
-            // print_4d(mat_4d);
+            // print_4d(mat_4d, this->size, this->field_components);
 
             return mat_4d;
         }
@@ -219,9 +210,9 @@ class WaveEquation{
             int i = 0;
             int j = 0;
             int k = 0;
-            for(int z = z_del.getBegin(); z < z_del.getEnd(); z++){
+            for(int x = x_del.getBegin(); x < x_del.getEnd(); x++){
                 for(int y = y_del.getBegin(); y < y_del.getEnd(); y++){
-                    for(int x = x_del.getBegin(); x < x_del.getEnd(); x++){
+                    for(int z = z_del.getBegin(); z < z_del.getEnd(); z++){
 
                         // std::cout << "mat_4d current value at pos : (" << field_component << "," << z << "," << y << "," << x << ") is : "
                         // << mat_4d[field_component][z][y][x]
@@ -231,7 +222,7 @@ class WaveEquation{
                         // << mat_3d[k][j][i]
                         // << std::endl;
                         
-                        mat_4d[field_component][z][y][x] -= mat_3d[k][j][i];
+                        mat_4d[x][y][z][field_component] -= mat_3d[k][j][i];
                         i++;
                     }
                     i = 0;
@@ -252,6 +243,7 @@ class WaveEquation{
             int i=0;
             int j=0;
             int k=0;
+            // std:: cout << "sub 3d :" << std::endl;
             for (auto depth = mat1.begin(); depth != mat1.end(); depth++) {
                 for (auto row = depth->begin(); row != depth->end(); row++) {
                     for(auto col = row->begin(); col != row->end(); col++){
@@ -266,7 +258,6 @@ class WaveEquation{
                 k++;
             }
 
-
             // std::cout << "result of sub 3d" << std::endl;
             // print_3d(mat1);
 
@@ -274,23 +265,23 @@ class WaveEquation{
         }
 
         Dim3 slice(Matrix4D input_mat, Delimiter x_del, Delimiter y_del, Delimiter z_del, int field_component){
-            Dim3 result_mat = Dim3(z_del.getLength(), Dim2(y_del.getLength(), Dim1(x_del.getLength())));
+            Dim3 result_mat = Dim3(x_del.getLength(), Dim2(y_del.getLength(), Dim1(z_del.getLength())));
 
             // std::cout << "look mom im in slice!" << std::endl;
-            // std::cout << "using syntax (field_component, z, y, x)" << std::endl;
+            // std::cout << "using syntax (x,y,z,field)" << std::endl;
 
             int i = 0;
             int j = 0;
             int k = 0;
-            for(int z = z_del.getBegin(); z < z_del.getEnd(); z++){
+            for(int x = x_del.getBegin(); x < x_del.getEnd(); x++){
                 for(int y = y_del.getBegin(); y < y_del.getEnd(); y++){
-                    for(int x = x_del.getBegin(); x < x_del.getEnd(); x++){
+                    for(int z = z_del.getBegin(); z < z_del.getEnd(); z++){
 
                         // std::cout << "current value at pos : (" << field_component << "," << z << "," << y << "," << x << ") is : "
                         // << input_mat[field_component][z][y][x]
                         // << std::endl;
                         
-                        result_mat[k][j][i] = input_mat[field_component][z][y][x];
+                        result_mat[k][j][i] = input_mat[x][y][z][field_component];
                         i++;
                     }
                     i = 0;
@@ -301,15 +292,15 @@ class WaveEquation{
                 k++;
             }
 
-            std::cout << "result of slicing" << std::endl;
-            print_3d(result_mat);
+            // std::cout << "result of slicing" << std::endl;
+            // print_3d(result_mat);
 
             return result_mat;
         }
 
         Matrix4D curl_E(Matrix4D E){
             //Valider que les delimiteurs sont bons (x,y,z) vs le code python
-            Matrix4D curl_E(3, Dim3(this->size, Dim2(this->size, Dim1(this->size))));
+            Matrix4D curl_E(this->size, Dim3(this->size, Dim2(this->size, Dim1(this->field_components))));
             Delimiter all = Delimiter(0, size);
             Delimiter not_first = Delimiter(1, size);
             Delimiter not_last = Delimiter(0, size-1);
@@ -351,23 +342,26 @@ void testGenerator(){
 
     std::cout << "im in testGenerator" << std::endl;
     int size = 2;
+    int field_components = 3;
+    int courant_number = 0.1;
 
-    WaveEquation w = WaveEquation(0.1, size);
+    WaveEquation w = WaveEquation(courant_number, size, field_components);
 
     auto mat = gen_mat4d(size, 3);
     std::cout << "input arr" << std::endl;
-    print_4d(mat);
+    // print_4d(mat);
 
-    //The cube can be contained in array at index i from 0 to 2 (size 3)
+    // Convention : [x][y][z][field]
+    // field represents a cube index from 0 to field_components (excluded)
 
     // The cube (nxnxn) :
-                            // col = l (x)
+                            // col = x
                      //  [19 20 21]
           //  [10 11 12] [22 23 24]
-    //[1 2 3] [13 14 15] [25 26 27] // row = k (y)
-    //[4 5 6] [16 17 18]  j = 2
-    //[7 8 9]   j = 1 
-     // j = 0 (z)
+    //[1 2 3] [13 14 15] [25 26 27] // row = y
+    //[4 5 6] [16 17 18]  
+    //[7 8 9]  
+     // depth = z 
 
 
 
@@ -384,14 +378,25 @@ void testGenerator(){
 
     // auto res4d = w.sub_from_4d(e, res3d, x_del, y_del, z_del, 0);
 
-    print_4d(w.curl_E(mat));
+    // print_4d(w.curl_E(mat));
+}
+
+void testCurl(){
+    WaveEquation w = WaveEquation(0.1, 3, 3);
+
+    auto mat = gen_mat4d(3,3);
+    print_4d(mat, 3, 3);
+
+    auto res = w.curl_E(mat);
+    print_4d(res, 3, 3);
 }
 
 
 int main(int argc, char const *argv[])
 {
-    int n = 100;
+    int n = 3;
     float courant_number = 0.1;
+    int field_components = 3;
 
     //Not clear what those are for
     // float r = 0.01;
@@ -399,7 +404,7 @@ int main(int argc, char const *argv[])
 
     // WaveEquation w = WaveEquation(courant_number, n);
 
-    testGenerator();
+    testCurl();
 
     /* code */
     return 0;
