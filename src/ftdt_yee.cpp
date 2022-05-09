@@ -3,10 +3,12 @@
 #include <vector>
 #include <iostream>
 
-typedef std::vector<int> Dim1;
+typedef std::vector<float> Dim1;
 typedef std::vector<Dim1> Dim2;
 typedef std::vector<Dim2> Dim3;
 typedef std::vector<Dim3> Matrix4D;
+typedef std::tuple<int, int, int, int> PosTuple;
+typedef std::tuple<Matrix4D, Matrix4D> TimestepRes;
 
 void print_3d(Dim3 mat){
     std::cout << "Result matrix 3d" << std::endl;
@@ -108,8 +110,8 @@ class Delimiter{
 };
 
 struct SourceResult{
-    std::tuple<int, int, int, int> src_tuple;
-    float sin_result;
+    PosTuple src_pos;
+    float src_val;
 };
 
 class WaveEquation{
@@ -152,22 +154,22 @@ class WaveEquation{
                 x_del = Delimiter(slice_index);
                 y_del = Delimiter(this->size, true);
                 z_del = Delimiter(this->size, true);
-                //field = field[slice_index, :, :, field_component] //TODO
             }
             else if(slice == 1){
                 x_del = Delimiter(this->size, true);
                 y_del = Delimiter(slice_index);
                 z_del = Delimiter(this->size);
-                // field = field[:, slice_index, :, field_component] //TODO
             }
             else if(slice == 2){
                 x_del = Delimiter(this->size, true);
                 y_del = Delimiter(this->size, true);
                 z_del = Delimiter(slice_index);
-                // field = field[:, :, slice_index, field_component] //TODO
             }
-            field = this->slice(input_field, x_del, y_del, z_del, field_component);
+            field = this->slice(input_field, x_del, y_del, z_del, field_component); //A valider
             SourceResult src_res = source(this->index);
+            TimestepRes E_H = this->timestep(this->E, this->H, this->courant_number, src_res.src_pos, src_res.src_val);
+            this->E = std::get<0>(E_H);
+            this->H = std::get<1>(E_H);
             // self.E, self.H = timestep(self.E, self.H, self.courant_number, source_pos, source_index); //TODO
             this->index += 1;
         }
@@ -264,6 +266,57 @@ class WaveEquation{
             return mat1;
         }
 
+        Matrix4D add_4d_to_4d(Matrix4D mat1, Matrix4D mat2, int size, int num_field_components){
+            for(int field_comp=0; field_comp<num_field_components; field_comp++){
+                for(int z=0; z<size; z++){
+                    for(int y=0; y<size; y++){
+                        for(int x=0; x < size; x++){
+                            mat1[x][y][z][field_comp] += mat2[x][y][z][field_comp];
+                        }
+                    }
+                }
+            }
+
+            return mat1;
+        }
+
+        Matrix4D sub_4d_from_4d(Matrix4D mat1, Matrix4D mat2, int size, int num_field_components){
+            for(int field_comp=0; field_comp<num_field_components; field_comp++){
+                for(int z=0; z<size; z++){
+                    for(int y=0; y<size; y++){
+                        for(int x=0; x < size; x++){
+                            mat1[x][y][z][field_comp] -= mat2[x][y][z][field_comp];
+                        }
+                    }
+                }
+            }
+
+            return mat1;
+        }
+
+        Matrix4D scalar_multiply_4d(Matrix4D mat1, float scalar, int size, int num_field_components){
+            for(int field_comp=0; field_comp<num_field_components; field_comp++){
+                for(int z=0; z<size; z++){
+                    for(int y=0; y<size; y++){
+                        for(int x=0; x < size; x++){
+                            mat1[x][y][z][field_comp] *= scalar;
+                        }
+                    }
+                }
+            }
+
+            return mat1;
+        }
+
+        Matrix4D add_to_4d_at_pos(Matrix4D mat, PosTuple pos, float val, int size, int num_field_components){
+            int x = std::get<0>(pos);
+            int y = std::get<1>(pos);
+            int z = std::get<2>(pos);
+            int field = std::get<3>(pos);
+            mat[x][y][z][field] += val;
+            return mat;
+        }
+
         Dim3 slice(Matrix4D input_mat, Delimiter x_del, Delimiter y_del, Delimiter z_del, int field_component){
             Dim3 result_mat = Dim3(x_del.getLength(), Dim2(y_del.getLength(), Dim1(z_del.getLength())));
 
@@ -356,13 +409,27 @@ class WaveEquation{
 
         SourceResult source(int index){
             SourceResult src_result;
-            src_result.src_tuple = std::make_tuple(floor(this->size/3),floor(this->size/3),floor(this->size/2),0);
-            src_result.sin_result = 0.1*sin(0.1*index);
+            src_result.src_pos = std::make_tuple(floor(this->size/3),floor(this->size/3),floor(this->size/2),0);
+            src_result.src_val = 0.1*sin(0.1*index);
             return src_result;
         }
 
-        void timestep(){
+        TimestepRes timestep(Matrix4D E, Matrix4D H, float courant_number, PosTuple source_pos, float source_val){
+            Matrix4D curl_H = this->curl_H(H);
+            Matrix4D curl_H_multiplied = scalar_multiply_4d(curl_H, courant_number, this->size, this->field_components);
 
+            // std::cout<<"curl_H multiplied : "<< std::endl;
+            // print_4d(curl_H_multiplied, 3, 3);
+
+            E = add_4d_to_4d(E, curl_H_multiplied, this->size, this->field_components);
+
+            E = add_to_4d_at_pos(E, source_pos, source_val, this->size, this->field_components);
+
+            Matrix4D curl_E = this->curl_E(E);
+            Matrix4D curl_E_multiplied = scalar_multiply_4d(curl_E, courant_number, this->size, this->field_components);
+            H = sub_4d_from_4d(H, curl_E_multiplied, this->size, this->field_components);
+
+            return std::make_tuple(E, H);
         }
 };
 
@@ -415,11 +482,79 @@ void testCurl(){
     auto mat = gen_mat4d(3,3);
     print_4d(mat, 3, 3);
 
-    // auto res_curl_E = w.curl_E(mat);
-    // print_4d(res_curl_E, 3, 3);
+    auto res_curl_E = w.curl_E(mat);
+    print_4d(res_curl_E, 3, 3);
 
-    // auto res_curl_H = w.curl_H(mat);
-    // print_4d(res_curl_H, 3, 3);
+    auto res_curl_H = w.curl_H(mat);
+    print_4d(res_curl_H, 3, 3);
+}
+
+void testMultiply(){
+    WaveEquation w = WaveEquation(0.1, 3, 3);
+
+    auto mat = gen_mat4d(3,3);
+    print_4d(mat, 3, 3);
+
+    auto mat_mul = w.scalar_multiply_4d(mat, 0.1, 3, 3);
+    print_4d(mat_mul, 3, 3);
+}
+
+void testAdd4dto4d(){
+    WaveEquation w = WaveEquation(0.1, 3, 3);
+
+    auto mat = gen_mat4d(3,3);
+    auto mat2 = gen_mat4d(3,3);
+
+    auto mat_add = w.sub_4d_from_4d(mat, mat2, 3, 3);
+    print_4d(mat_add, 3, 3);
+}
+
+void testSub4dFrom4d(){
+    WaveEquation w = WaveEquation(0.1, 3, 3);
+
+    auto mat = gen_mat4d(3,3);
+    auto mat2 = gen_mat4d(3,3);
+
+    auto mat_add = w.sub_4d_from_4d(mat, mat2, 3, 3);
+    print_4d(mat_add, 3, 3);
+}
+
+
+void testAddto4dAtPos(){
+    WaveEquation w = WaveEquation(0.1, 3, 3);
+
+    auto mat = gen_mat4d(3,3);
+    PosTuple pos = std::make_tuple(0,0,0,0);
+
+    auto mat_add = w.add_to_4d_at_pos(mat, pos, 1, 3, 3);
+    print_4d(mat_add, 3, 3);
+}
+
+void testTimeStep(){
+    WaveEquation w = WaveEquation(0.1, 3, 3);
+
+    auto mat = gen_mat4d(3,3);
+    auto mat2 = gen_mat4d(3,3);
+    TimestepRes E_H;
+
+    int index = 0;
+
+    for(int i=0; i<10; i++){
+        SourceResult src_res = w.source(index++); 
+        std::cout << "src_pos: " << std::get<0>(src_res.src_pos) << "," <<  std::get<1>(src_res.src_pos) << "," <<  
+        std::get<2>(src_res.src_pos)  << "," <<  std::get<3>(src_res.src_pos) << " src_val: " << src_res.src_val << std::endl;
+
+        E_H = w.timestep(mat, mat2, 1.1, src_res.src_pos, src_res.src_val);
+        mat = std::get<0>(E_H);
+        mat2 = std::get<1>(E_H);
+
+        std::cout<< "E after " << i+1 << " timestep" << std::endl; 
+        print_4d(mat, 3, 3);
+
+        std::cout<< "H after " << i+1 << " timestep" << std::endl;
+        print_4d(mat2, 3, 3);
+    }
+
 }
 
 
@@ -435,7 +570,12 @@ int main(int argc, char const *argv[])
 
     // WaveEquation w = WaveEquation(courant_number, n);
 
-    testCurl();
+    // testCurl();
+    // testMultiply();
+    // testAdd4dto4d();
+    // testAddto4dAtPos();
+    // testSub4dFrom4d();
+    testTimeStep();
 
     /* code */
     return 0;
