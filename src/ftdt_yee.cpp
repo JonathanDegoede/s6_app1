@@ -326,6 +326,34 @@ class WaveEquation{
             return curl_E;
         }
 
+        Matrix4D curl_H(Matrix4D H){
+            //Valider que les delimiteurs sont bons (x,y,z) vs le code python
+            Matrix4D curl_H(this->size, Dim3(this->size, Dim2(this->size, Dim1(this->field_components))));
+            Delimiter all = Delimiter(0, size);
+            Delimiter not_first = Delimiter(1, size);
+            Delimiter not_last = Delimiter(0, size-1);
+
+            auto add3d_res = sub_3d(slice(H, all, not_first, all, 2), slice(H, all, not_last, all, 2));
+            curl_H = add_to_4d(curl_H, add3d_res, all, not_first, all, 0);
+
+            add3d_res = sub_3d(slice(H, all, all, not_first, 1), slice(H, all, all, not_last, 1));
+            curl_H = sub_from_4d(curl_H, add3d_res, all, all, not_first, 0);
+
+            add3d_res = sub_3d(slice(H, all, all, not_first, 0), slice(H, all, all, not_last, 0));
+            curl_H = add_to_4d(curl_H, add3d_res, all, all, not_first, 1);
+
+            add3d_res = sub_3d(slice(H, not_first, all, all, 2), slice(H, not_last, all, all, 2));
+            curl_H = sub_from_4d(curl_H, add3d_res, not_first, all, all, 1);
+
+            add3d_res = sub_3d(slice(H, not_first, all, all, 1), slice(H, not_last, all, all, 1));
+            curl_H = add_to_4d(curl_H, add3d_res, not_first, all, all, 2);
+
+            add3d_res = sub_3d(slice(H, all, not_first, all, 0), slice(H, all, not_last, all, 0));
+            curl_H = sub_from_4d(curl_H, add3d_res, all, not_first, all, 2);
+
+            return curl_H;
+        }
+
         SourceResult source(int index){
             SourceResult src_result;
             src_result.src_tuple = std::make_tuple(floor(this->size/3),floor(this->size/3),floor(this->size/2),0);
@@ -387,8 +415,11 @@ void testCurl(){
     auto mat = gen_mat4d(3,3);
     print_4d(mat, 3, 3);
 
-    auto res = w.curl_E(mat);
-    print_4d(res, 3, 3);
+    // auto res_curl_E = w.curl_E(mat);
+    // print_4d(res_curl_E, 3, 3);
+
+    // auto res_curl_H = w.curl_H(mat);
+    // print_4d(res_curl_H, 3, 3);
 }
 
 
