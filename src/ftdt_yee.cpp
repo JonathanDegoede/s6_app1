@@ -415,19 +415,32 @@ class WaveEquation{
         }
 
         TimestepRes timestep(Matrix4D E, Matrix4D H, float courant_number, PosTuple source_pos, float source_val){
+
+            std::cout << "im in timestep" << std::endl;
             Matrix4D curl_H = this->curl_H(H);
+            std::cout << "done with curl H" << std::endl;
             Matrix4D curl_H_multiplied = scalar_multiply_4d(curl_H, courant_number, this->size, this->field_components);
+            std::cout << "done with curl H multiplied" << std::endl;
 
             // std::cout<<"curl_H multiplied : "<< std::endl;
             // print_4d(curl_H_multiplied, 3, 3);
 
             E = add_4d_to_4d(E, curl_H_multiplied, this->size, this->field_components);
+            std::cout << "done with adding curl H to E" << std::endl;
 
             E = add_to_4d_at_pos(E, source_pos, source_val, this->size, this->field_components);
+            std::cout << "done with adding src val at pos src pos" << std::endl;
 
             Matrix4D curl_E = this->curl_E(E);
+            std::cout << "done with curl E" << std::endl;
+
             Matrix4D curl_E_multiplied = scalar_multiply_4d(curl_E, courant_number, this->size, this->field_components);
+            std::cout << "done with curl E multiplied" << std::endl;
+
             H = sub_4d_from_4d(H, curl_E_multiplied, this->size, this->field_components);
+            std::cout << "done with subbing curl E from H " << std::endl;
+
+            std::cout << "Done with timestep, returning" << std::endl;
 
             return std::make_tuple(E, H);
         }
@@ -535,26 +548,32 @@ void testTimeStep(){
 
     auto mat = gen_mat4d(3,3);
     auto mat2 = gen_mat4d(3,3);
+
     TimestepRes E_H;
 
     int index = 0;
 
-    for(int i=0; i<10; i++){
+    for(int i=0; i<1000; i++){
         SourceResult src_res = w.source(index++); 
         std::cout << "src_pos: " << std::get<0>(src_res.src_pos) << "," <<  std::get<1>(src_res.src_pos) << "," <<  
         std::get<2>(src_res.src_pos)  << "," <<  std::get<3>(src_res.src_pos) << " src_val: " << src_res.src_val << std::endl;
 
-        E_H = w.timestep(mat, mat2, 1.1, src_res.src_pos, src_res.src_val);
+        E_H = w.timestep(mat, mat2, 0.1, src_res.src_pos, src_res.src_val);
         mat = std::get<0>(E_H);
         mat2 = std::get<1>(E_H);
 
-        std::cout<< "E after " << i+1 << " timestep" << std::endl; 
-        print_4d(mat, 3, 3);
+        // std::cout<< "E after " << i+1 << " timestep" << std::endl; 
+        // // print_4d(mat, 3, 3);
 
-        std::cout<< "H after " << i+1 << " timestep" << std::endl;
-        print_4d(mat2, 3, 3);
+        // std::cout<< "H after " << i+1 << " timestep" << std::endl;
+        // // print_4d(mat2, 3, 3);
     }
 
+    std::cout<< "E after 10  timestep" << std::endl; 
+    print_4d(mat, 3, 3);
+
+    // std::cout<< "H after " << i+1 << " timestep" << std::endl;
+    // // print_4d(mat2, 3, 3);
 }
 
 
