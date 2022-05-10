@@ -105,7 +105,6 @@ void print_4d_to_file(std::string filename, Matrix4D mat, int size, int num_fiel
             }
         }
         file << std::endl;
-        file << std::endl;
     }
     file.close();
 }
@@ -497,7 +496,7 @@ int main(int argc, char const *argv[])
      // depth = z 
 
 
-    int n = 5;
+    int n = 3;
     float courant_number = 0.1;
     int field_components = 3;
 
