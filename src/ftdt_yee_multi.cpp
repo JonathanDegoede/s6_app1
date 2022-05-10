@@ -6,6 +6,7 @@
 #include <string>
 #include <future>
 #include <thread>
+#include <iomanip>
 
 class Delimiter{
     private:
@@ -99,11 +100,11 @@ void print_4d_to_file(std::string filename, Matrix4D mat, int size, int num_fiel
         for(int z=0; z<size; z++){
             for(int y=0; y<size; y++){
                 for(int x=0; x < size; x++){
-                    file << mat[x][y][z][field_comp] << " ";
+                    file << "(" << x << ", "<< y << ", "<< z << ", "<< field_comp << "): ";
+                    file << std::fixed << std::setprecision(5) << mat[x][y][z][field_comp] << std::endl;
                 }
             }
         }
-        file << std::endl;
         file << std::endl;
     }
     file.close();
@@ -261,12 +262,12 @@ class WaveEquation{
             return mat1;
         }
 
-        Matrix4D add_4d_to_4d(Matrix4D mat1, Matrix4D mat2, int size, int num_field_components){
+        Matrix4D add_4d_to_4d(Matrix4D mat1, Matrix4D mat2, int size, int num_field_components, int multiplicator){
             for(int field_comp=0; field_comp<num_field_components; field_comp++){
                 for(int z=0; z<size; z++){
                     for(int y=0; y<size; y++){
                         for(int x=0; x < size; x++){
-                            mat1[x][y][z][field_comp] += mat2[x][y][z][field_comp];
+                            mat1[x][y][z][field_comp] += multiplicator*mat2[x][y][z][field_comp];
                         }
                     }
                 }
@@ -275,26 +276,12 @@ class WaveEquation{
             return mat1;
         }
 
-        Matrix4D sub_4d_from_4d(Matrix4D mat1, Matrix4D mat2, int size, int num_field_components){
+        Matrix4D sub_4d_from_4d(Matrix4D mat1, Matrix4D mat2, int size, int num_field_components, int multiplicator){
             for(int field_comp=0; field_comp<num_field_components; field_comp++){
                 for(int z=0; z<size; z++){
                     for(int y=0; y<size; y++){
                         for(int x=0; x < size; x++){
-                            mat1[x][y][z][field_comp] -= mat2[x][y][z][field_comp];
-                        }
-                    }
-                }
-            }
-
-            return mat1;
-        }
-
-        Matrix4D scalar_multiply_4d(Matrix4D mat1, float scalar, int size, int num_field_components){
-            for(int field_comp=0; field_comp<num_field_components; field_comp++){
-                for(int z=0; z<size; z++){
-                    for(int y=0; y<size; y++){
-                        for(int x=0; x < size; x++){
-                            mat1[x][y][z][field_comp] *= scalar;
+                            mat1[x][y][z][field_comp] -= multiplicator*mat2[x][y][z][field_comp];
                         }
                     }
                 }
@@ -408,10 +395,8 @@ class WaveEquation{
             std::cout << "im in timestep" << std::endl;
             Matrix4D curl_H = this->curl_H(H);
             std::cout << "done with curl H" << std::endl;
-            Matrix4D curl_H_multiplied = scalar_multiply_4d(curl_H, courant_number, this->size, this->field_components);
-            std::cout << "done with curl H multiplied" << std::endl;
 
-            E = add_4d_to_4d(E, curl_H_multiplied, this->size, this->field_components);
+            E = add_4d_to_4d(E, curl_H, this->size, this->field_components, courant_number);
             std::cout << "done with adding curl H to E" << std::endl;
 
             E = add_to_4d_at_pos(E, source_pos, source_val, this->size, this->field_components);
@@ -419,10 +404,7 @@ class WaveEquation{
             Matrix4D curl_E = this->curl_E(E);
             std::cout << "done with curl E" << std::endl;
 
-            Matrix4D curl_E_multiplied = scalar_multiply_4d(curl_E, courant_number, this->size, this->field_components);
-            std::cout << "done with curl E multiplied" << std::endl;
-
-            H = sub_4d_from_4d(H, curl_E_multiplied, this->size, this->field_components);
+            H = sub_4d_from_4d(H, curl_E, this->size, this->field_components, courant_number);
             std::cout << "done with subbing curl E from H " << std::endl;
 
             std::cout << "Done with timestep, returning" << std::endl;
@@ -444,23 +426,13 @@ void testCurl(){
     print_4d(res_curl_H, 3, 3);
 }
 
-void testMultiply(){
-    WaveEquation w = WaveEquation(0.1, 3, 3);
-
-    auto mat = gen_mat4d(3,3);
-    print_4d(mat, 3, 3);
-
-    auto mat_mul = w.scalar_multiply_4d(mat, 0.1, 3, 3);
-    print_4d(mat_mul, 3, 3);
-}
-
 void testAdd4dto4d(){
     WaveEquation w = WaveEquation(0.1, 3, 3);
 
     auto mat = gen_mat4d(3,3);
     auto mat2 = gen_mat4d(3,3);
 
-    auto mat_add = w.sub_4d_from_4d(mat, mat2, 3, 3);
+    auto mat_add = w.sub_4d_from_4d(mat, mat2, 3, 3, 1);
     print_4d(mat_add, 3, 3);
 }
 
@@ -470,7 +442,7 @@ void testSub4dFrom4d(){
     auto mat = gen_mat4d(3,3);
     auto mat2 = gen_mat4d(3,3);
 
-    auto mat_add = w.sub_4d_from_4d(mat, mat2, 3, 3);
+    auto mat_add = w.sub_4d_from_4d(mat, mat2, 3, 3, 1);
     print_4d(mat_add, 3, 3);
 }
 
@@ -526,7 +498,7 @@ int main(int argc, char const *argv[])
      // depth = z 
 
 
-    int n = 100;
+    int n = 5;
     float courant_number = 0.1;
     int field_components = 3;
 
@@ -534,15 +506,15 @@ int main(int argc, char const *argv[])
     std::string folder_path = "./output_waveprop/cpp/";
 
     WaveEquation w = WaveEquation(courant_number, n, field_components);
-    for(int i=0; i<10; i++){
+    for(int i=0; i<2; i++){
         w(0, 0, 0);
     }
 
     Matrix4D E = w.get_E();
     Matrix4D H = w.get_H();
 
-    // print_4d_to_file(folder_path + "cpp_4d_E_res_multi.txt", E, n, field_components);
-    // print_4d_to_file(folder_path + "cpp_4d_H_res_multi.txt", H, n, field_components);
+    print_4d_to_file(folder_path + "cpp_4d_E_res_multi.txt", E, n, field_components);
+    print_4d_to_file(folder_path + "cpp_4d_H_res_multi.txt", H, n, field_components);
 
     return 0;
 }
