@@ -4,9 +4,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <future>
-#include <thread>
 #include <iomanip>
+#include <future>
 
 class Delimiter{
     private:
@@ -49,7 +48,7 @@ typedef std::vector<Dim2> Dim3;
 typedef std::vector<Dim3> Matrix4D;
 typedef std::tuple<int, int, int, int> PosTuple;
 typedef std::tuple<Matrix4D, Matrix4D> TimestepRes;
-typedef std::tuple<Delimiter, Delimiter, Delimiter> Delimiter3D;
+typedef std::vector<Delimiter> DelimiterVec;
 
 void print_3d(Dim3 mat){
     std::cout << "Result matrix 3d" << std::endl;
@@ -105,6 +104,7 @@ void print_4d_to_file(std::string filename, Matrix4D mat, int size, int num_fiel
                 }
             }
         }
+        file << std::endl;
         file << std::endl;
     }
     file.close();
@@ -262,7 +262,7 @@ class WaveEquation{
             return mat1;
         }
 
-        Matrix4D add_4d_to_4d(Matrix4D mat1, Matrix4D mat2, int size, int num_field_components, int multiplicator){
+        Matrix4D add_4d_to_4d(Matrix4D mat1, Matrix4D mat2, int size, int num_field_components, float multiplicator){
             for(int field_comp=0; field_comp<num_field_components; field_comp++){
                 for(int z=0; z<size; z++){
                     for(int y=0; y<size; y++){
@@ -276,7 +276,7 @@ class WaveEquation{
             return mat1;
         }
 
-        Matrix4D sub_4d_from_4d(Matrix4D mat1, Matrix4D mat2, int size, int num_field_components, int multiplicator){
+        Matrix4D sub_4d_from_4d(Matrix4D mat1, Matrix4D mat2, int size, int num_field_components, float multiplicator){
             for(int field_comp=0; field_comp<num_field_components; field_comp++){
                 for(int z=0; z<size; z++){
                     for(int y=0; y<size; y++){
@@ -323,10 +323,10 @@ class WaveEquation{
             return result_mat;
         }
 
-        Dim3 sub_3d_multi(Matrix4D E, Delimiter3D del1, Delimiter3D del2, int field){
+        Dim3 sub_3d_multi(Matrix4D mat, DelimiterVec del1, DelimiterVec del2, int field){
 
-            std::future<Dim3> mat1_future = std::async(std::launch::async, [&]{ return this->slice(E, std::get<0>(del1), std::get<1>(del1), std::get<2>(del1), field);});
-            std::future<Dim3> mat2_future = std::async(std::launch::async, [&]{return this->slice(E, std::get<0>(del2), std::get<1>(del2), std::get<2>(del2), field);});
+            std::future<Dim3> mat1_future = std::async(std::launch::async, [&]{ return this->slice(mat, del1[0], del1[1], del1[2], field);});
+            std::future<Dim3> mat2_future = std::async(std::launch::async, [&]{return this->slice(mat, del2[0], del2[1], del2[2], field);});
 
             Dim3 mat1 = mat1_future.get();
             Dim3 mat2 = mat2_future.get();
@@ -336,17 +336,16 @@ class WaveEquation{
 
         Matrix4D curl_E(Matrix4D E){
             Matrix4D curl_E(this->size, Dim3(this->size, Dim2(this->size, Dim1(this->field_components))));
+            Delimiter all = Delimiter(0, size);
+            Delimiter not_first = Delimiter(1, size);
+            Delimiter not_last = Delimiter(0, size-1);
 
-            Delimiter all = Delimiter(0, this->size);
-            Delimiter not_first = Delimiter(1, this->size);
-            Delimiter not_last = Delimiter(0, this->size-1);
-
-            std::future<Dim3> mat1_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, std::make_tuple(all, not_first, all), std::make_tuple(all, not_last, all), 2);});
-            std::future<Dim3> mat2_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, std::make_tuple(all, all, not_first), std::make_tuple(all, all, not_last), 1);});
-            std::future<Dim3> mat3_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, std::make_tuple(all, all, not_first), std::make_tuple(all, all, not_last), 0);}); 
-            std::future<Dim3> mat4_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, std::make_tuple(not_first, all, all), std::make_tuple(not_last, all, all), 2);});
-            std::future<Dim3> mat5_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, std::make_tuple(not_first, all, all), std::make_tuple(not_last, all, all), 1);});
-            std::future<Dim3> mat6_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, std::make_tuple(all, not_first, all), std::make_tuple(all, not_last, all), 0);});
+            std::future<Dim3> mat1_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, {all, not_first, all}, {all, not_last, all}, 2);});
+            std::future<Dim3> mat2_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, {all, all, not_first}, {all, all, not_last}, 1);});
+            std::future<Dim3> mat3_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, {all, all, not_first}, {all, all, not_last}, 0);}); 
+            std::future<Dim3> mat4_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, {not_first, all, all}, {not_last, all, all}, 2);});
+            std::future<Dim3> mat5_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, {not_first, all, all}, {not_last, all, all}, 1);});
+            std::future<Dim3> mat6_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, {all, not_first, all}, {all, not_last, all}, 0);});
 
             curl_E = add_to_4d(curl_E, mat1_future.get(), all, not_last, all, 0);
             curl_E = sub_from_4d(curl_E, mat2_future.get(), all, all, not_last, 0);
@@ -364,12 +363,12 @@ class WaveEquation{
             Delimiter not_first = Delimiter(1, size);
             Delimiter not_last = Delimiter(0, size-1);
 
-            std::future<Dim3> mat1_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, std::make_tuple(all, not_first, all), std::make_tuple(all, not_last, all), 2);});
-            std::future<Dim3> mat2_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, std::make_tuple(all, all, not_first), std::make_tuple(all, all, not_last), 1);});
-            std::future<Dim3> mat3_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, std::make_tuple(all, all, not_first), std::make_tuple(all, all, not_last), 0);}); 
-            std::future<Dim3> mat4_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, std::make_tuple(not_first, all, all), std::make_tuple(not_last, all, all), 2);});
-            std::future<Dim3> mat5_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, std::make_tuple(not_first, all, all), std::make_tuple(not_last, all, all), 1);});
-            std::future<Dim3> mat6_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(E, std::make_tuple(all, not_first, all), std::make_tuple(all, not_last, all), 0);});
+            std::future<Dim3> mat1_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(H, {all, not_first, all}, {all, not_last, all}, 2);});
+            std::future<Dim3> mat2_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(H, {all, all, not_first}, {all, all, not_last}, 1);});
+            std::future<Dim3> mat3_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(H, {all, all, not_first}, {all, all, not_last}, 0);}); 
+            std::future<Dim3> mat4_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(H, {not_first, all, all}, {not_last, all, all}, 2);});
+            std::future<Dim3> mat5_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(H, {not_first, all, all}, {not_last, all, all}, 1);});
+            std::future<Dim3> mat6_future = std::async(std::launch::async, [&]{return this->sub_3d_multi(H, {all, not_first, all}, {all, not_last, all}, 0);});
 
             curl_H = add_to_4d(curl_H, mat1_future.get(), all, not_first, all, 0);
             curl_H = sub_from_4d(curl_H, mat2_future.get(), all, all, not_first, 0);
@@ -506,7 +505,7 @@ int main(int argc, char const *argv[])
     std::string folder_path = "./output_waveprop/cpp/";
 
     WaveEquation w = WaveEquation(courant_number, n, field_components);
-    for(int i=0; i<2; i++){
+    for(int i=0; i<100; i++){
         w(0, 0, 0);
     }
 

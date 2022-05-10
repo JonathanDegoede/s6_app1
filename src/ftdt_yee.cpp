@@ -500,7 +500,7 @@ int main(int argc, char const *argv[])
     std::string folder_path = "./output_waveprop/cpp/";
 
     WaveEquation w = WaveEquation(courant_number, n, field_components);
-    for(int i=0; i<2; i++){
+    for(int i=0; i<100; i++){
         w(0, 0, 0);
     }
 
