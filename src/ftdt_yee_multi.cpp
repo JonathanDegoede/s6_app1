@@ -187,8 +187,7 @@ class WaveEquation{
                 y_del = Delimiter(0, this->size);
                 z_del = Delimiter(slice_index, slice_index+1);
             }
-            std::cout << "i will slice input field" << std::endl;
-            field = this->slice(input_field, x_del, y_del, z_del, field_component); //A valider
+            field = this->slice(input_field, x_del, y_del, z_del, field_component);
             SourceResult src_res = source(this->index);
             TimestepRes E_H = this->timestep(this->E, this->H, this->courant_number, src_res.src_pos, src_res.src_val);
             this->E = std::get<0>(E_H);
@@ -383,29 +382,20 @@ class WaveEquation{
             SourceResult src_result;
             src_result.src_pos = std::make_tuple(floor(this->size/3),floor(this->size/3),floor(this->size/2),0);
             src_result.src_val = 0.1*sin(0.1*index);
-            std::cout<<"im in source and index is : " << index << " .  0.1*sin(0.1*index) evaluates to : " << src_result.src_val << std::endl;
-
             return src_result;
         }
 
         TimestepRes timestep(Matrix4D E, Matrix4D H, float courant_number, PosTuple source_pos, float source_val){
 
-            std::cout << "im in timestep" << std::endl;
             Matrix4D curl_H = this->curl_H(H);
-            std::cout << "done with curl H" << std::endl;
 
             E = add_4d_to_4d(E, curl_H, this->size, this->field_components, courant_number);
-            std::cout << "done with adding curl H to E" << std::endl;
 
             E = add_to_4d_at_pos(E, source_pos, source_val, this->size, this->field_components);
 
             Matrix4D curl_E = this->curl_E(E);
-            std::cout << "done with curl E" << std::endl;
 
             H = sub_4d_from_4d(H, curl_E, this->size, this->field_components, courant_number);
-            std::cout << "done with subbing curl E from H " << std::endl;
-
-            std::cout << "Done with timestep, returning" << std::endl;
 
             return std::make_tuple(E, H);
         }
@@ -467,15 +457,11 @@ void testTimeStep(){
 
     for(int i=0; i<1000; i++){
         SourceResult src_res = w.source(index++); 
-        std::cout << "src_pos: " << std::get<0>(src_res.src_pos) << "," <<  std::get<1>(src_res.src_pos) << "," <<  
-        std::get<2>(src_res.src_pos)  << "," <<  std::get<3>(src_res.src_pos) << " src_val: " << src_res.src_val << std::endl;
-
         E_H = w.timestep(mat, mat2, 0.1, src_res.src_pos, src_res.src_val);
         mat = std::get<0>(E_H);
         mat2 = std::get<1>(E_H);
     }
 
-    std::cout<< "E after 10  timestep" << std::endl; 
     print_4d(mat, 3, 3);
 }
 
